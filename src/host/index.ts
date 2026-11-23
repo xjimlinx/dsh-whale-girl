@@ -2431,7 +2431,21 @@ export function apply(ctx: any): void {
     // 签名 Cookie，其余请求一律 401 —— 默认浏览器没有该 authority 的 Cookie 时必然打不开（#87）。
     // 令牌等价登录态：只经子进程环境变量递到 helper 内存，不落盘、不进日志；authority 必须保持
     // 127.0.0.1（与 localhost 算两套 Cookie），故这里传 origin 而不是另拼地址。
-    const siteUrl = ctx.connection.authenticatedUrl(origin);
+    // DSH 0.2.3 contributes signed entry URLs through this event; older builds
+    // expose the same operation directly on connection.
+    let siteUrl = origin;
+    if (typeof ctx.connection.authenticatedUrl === 'function') {
+      siteUrl = ctx.connection.authenticatedUrl(origin);
+    } else {
+      const entries: Array<{ url?: string }> = [];
+      ctx.emit(ctx.webServer, 'webserver/entry-url', origin, entries);
+      const signed = entries.find((entry) => {
+        if (!entry.url) return false;
+        const url = new URL(entry.url);
+        return url.origin === origin && url.searchParams.has('token');
+      });
+      if (signed?.url) siteUrl = signed.url;
+    }
     // 桌面渲染端也从同一份 handlePetRoute 拿成品配置（每只宠物一个局部小窗口；经管道，不走 HTTP——
     // DSH Desktop 2.0.3+ 会拦插件自拉进程的裸 HTTP 请求，浏览器访问闸门只放行带令牌的请求）
     const configUrl = `${origin}${ROUTE_PREFIX}/config`;
@@ -2749,27 +2763,31 @@ export function apply(ctx: any): void {
       return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
     }
 
-    // 单只宠物的显示位置（桌面端右键「关闭桌面显示」→ POST /pet-display）。
-    // 高频操作，故只收 id + display 两个参数，不要求调用方回传整段 pets（那是 PUT /config 的形态：
+    // 单只宠物的显示位置或大小（桌面端右键菜单 → POST /pet-display 或 /pet-size）。
+    // 只收 id 和目标值，不要求调用方回传整段 pets（那是 PUT /config 的形态：
     // 客户端做读-改-写既容易误伤同层其它宠物，也拿不准该写哪一层）。
     // 层归属由服务端反查：id 在合并后被 mergePet 保证**全局唯一**（重复实例会被跳过、不进聚合），
     // 所以 findPetInstance 的结果没有歧义；反过来让客户端传 entry 只会多出"参数与真实归属不符"的
     // 新失败面（还平白把 entry 暴露成拼文件路径的输入）。
     // 写入语义与 PUT /config 完全一致：saveUserConfig 白名单重建 + existing 透传——用户手改的
     // whisperPrompt / memes 等非白名单字段不许被抹掉（见 ./config 里那段老 bug 的注释）。
-    if (rest === 'pet-display') {
+    if (rest === 'pet-display' || rest === 'pet-size') {
       if (method !== 'POST') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
-      let payload: { id?: unknown; display?: unknown };
+      let payload: { id?: unknown; display?: unknown; size?: unknown };
       try {
-        payload = JSON.parse(body ?? '') as { id?: unknown; display?: unknown };
+        payload = JSON.parse(body ?? '') as { id?: unknown; display?: unknown; size?: unknown };
       } catch {
         return { kind: 'json', status: 400, obj: { error: 'invalid JSON body' } };
       }
       const petId = typeof payload.id === 'string' ? payload.id.trim() : '';
       const nextDisplay = String(payload.display ?? '');
+      const nextSize = payload.size;
       if (!petId) return { kind: 'json', status: 400, obj: { error: 'missing pet id' } };
-      if (!PET_DISPLAY_SET.has(nextDisplay)) {
+      if (rest === 'pet-display' && !PET_DISPLAY_SET.has(nextDisplay)) {
         return { kind: 'json', status: 400, obj: { error: `invalid display: ${nextDisplay}` } };
+      }
+      if (rest === 'pet-size' && (typeof nextSize !== 'number' || !Number.isInteger(nextSize) || nextSize < 160 || nextSize > 800)) {
+        return { kind: 'json', status: 400, obj: { error: 'size must be an integer from 160 to 800 px' } };
       }
       let merged: Record<string, Record<string, unknown>>;
       try {
@@ -2799,9 +2817,11 @@ export function apply(ctx: any): void {
         existing = file.raw;
       }
       // 整段替换语义：saveUserConfig 重建的是整个 pets 数组，必须带上**该层全部**宠物，只把目标
-      // 那只的 display 换掉（漏掉别的 = 把它们从配置里删掉）。
+      // 那只的目标字段换掉（漏掉别的 = 把它们从配置里删掉）。
       const layerPets = Array.isArray(hit.conf.pets) ? (hit.conf.pets as Record<string, unknown>[]) : [];
-      const pets = layerPets.map((p) => (String(p.id) === petId ? { ...p, display: nextDisplay } : p));
+      const pets = layerPets.map((p) => (String(p.id) === petId
+        ? rest === 'pet-size' ? { ...p, size: nextSize } : { ...p, display: nextDisplay }
+        : p));
       const clean = saveUserConfig({ pets }, existing);
       if (!clean) return { kind: 'json', status: 400, obj: { error: 'invalid pet config' } };
       try {

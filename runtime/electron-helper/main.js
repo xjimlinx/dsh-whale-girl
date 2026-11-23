@@ -328,8 +328,9 @@ const windowIgnore = new Map();
 
 /** 翻转整窗穿透的**唯一出口**：状态与 windowIgnore 镜像永远一起更新（穿透期间保留 forward） */
 function setWindowIgnore(win, ignore) {
-  win.setIgnoreMouseEvents(ignore, { forward: true });
-  windowIgnore.set(win.id, ignore);
+  const effective = process.platform === 'linux' && process.env.DSH_WHALE_FORCE_INTERACTIVE === '1' ? false : ignore;
+  win.setIgnoreMouseEvents(effective, { forward: true });
+  windowIgnore.set(win.id, effective);
 }
 
 /** 兜底通道的光标轮询间隔（ms，与 issue #55 报告者实测值一致） */
@@ -530,6 +531,7 @@ function createPetWindows() {
           // 工具项「打开网站」的文案按宿主形态自动变（见 sprite.js）：desktop=唤起桌面应用 / site=打开站点
           openTarget: OPEN_TARGET,
           scale: String(scale),
+          linux: process.platform === 'linux' ? '1' : '0',
           petIndex: String(pet.index),
           workAreaW: String(area.width),
           workAreaH: String(area.height),

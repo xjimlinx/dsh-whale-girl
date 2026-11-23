@@ -12,6 +12,7 @@ const params = new URLSearchParams(location.search);
 const CONFIG = {
   configUrl: params.get('configUrl') || 'http://127.0.0.1:3080/dsh-whale-girl/config',
   scale: Number(params.get('scale') || '1'),
+  linux: params.get('linux') === '1',
   petIndex: Number(params.get('petIndex') || '0'),
   topInsetRatio: Number(params.get('topInsetRatio') || '0'),
 };

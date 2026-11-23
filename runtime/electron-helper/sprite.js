@@ -44,6 +44,7 @@ class PetSprite {
     const m = this.size * WINDOW_MARGIN_RATIO;
     const fontConf = pet.font || config.font || S.DEFAULT_FONT;
     this.margin = { t: Math.max(m, S.bubbleTopMarginPx(fontConf, this.size)), r: m, b: m, l: m };
+    this.baseTopMargin = this.margin.t;
     window.__dshPetDebug.winMargin = this.margin;
     // 宠物包围盒左上角在【工作区】坐标系里的位置（本窗口的位置 = 宠物的位置）
     this.pos = { x: 0, y: 0 };
@@ -281,6 +282,21 @@ class PetSprite {
   // 主进程侧（bounds/去重/碰撞 broker）完全不用改。
   sendBounds(px, py) {
     this.pos = { x: Math.round(px), y: Math.round(py) };
+    // X11 compositors can keep a transparent window inside its monitor. Shrink
+    // the unused space above the sprite as it approaches the top edge, so that
+    // the window constraint does not stop the visible character too early.
+    if (CONFIG.linux) {
+      const centerX = this.pos.x + this.halfW;
+      const area = AREAS.filter((a) => centerX >= a.x && centerX < a.x + a.width)
+        .sort((a, b) => Math.abs(this.pos.y - a.y) - Math.abs(this.pos.y - b.y))[0];
+      if (area) {
+        const topMargin = Math.max(0, Math.min(this.baseTopMargin, this.pos.y - area.y));
+        if (Math.abs(topMargin - this.margin.t) >= 1) {
+          this.margin.t = topMargin;
+          this.el.style.top = topMargin + 'px';
+        }
+      }
+    }
     window.__dshPetDebug.dragPos = { x: this.pos.x, y: this.pos.y };
     if (window.petBridge) {
       // 完整状态一次捎带：size/bottomPad 让静止宠物从首帧起就登记进碰撞站场
@@ -1225,6 +1241,13 @@ class PetSprite {
       // 「代打」菜单项 = 开始/停止陪玩（快速入口；不再是只翻「允许代打」权限位）
       { label: '开始 / 停止陪玩', action: 'toggle-autoplay' },
       { label: '回到初始位置', action: 'home' },
+      { label: '大小', children: [
+        { label: '较小 · 320 px', action: 'set-size', size: 320 },
+        { label: '小 · 400 px', action: 'set-size', size: 400 },
+        { label: '中 · 480 px', action: 'set-size', size: 480 },
+        { label: '大 · 560 px', action: 'set-size', size: 560 },
+        { label: '较大 · 640 px', action: 'set-size', size: 640 },
+      ] },
       // 显示位置（仅网页/仅桌面/两者/都不）：改这只宠物的 display 配置 + 宿主重载生效。
       // 与浏览器端注入的是**同一份**子菜单（shared 的 displayMenuBranch），两端文案/取值不会漂移。
       // 为什么不就地关窗/开窗：桌面宠物共用一个 Electron 进程，窗口是进程启动时按 DSH_WHALE_PETS
@@ -1294,6 +1317,10 @@ class PetSprite {
     }
     if (leaf.action === 'set-display') {
       this.setPetDisplay(leaf.display); // 改这只宠物的显示位置：写 display 配置，由宿主重载生效
+      return;
+    }
+    if (leaf.action === 'set-size') {
+      this.setPetSize(leaf.size);
       return;
     }
     if (leaf.action === 'reload') {
@@ -1430,6 +1457,17 @@ class PetSprite {
       body: JSON.stringify({ id: this.pet.id, display }),
     }).catch((e) => {
       console.warn('[dsh-whale-girl] 显示位置请求失败（宿主不可达？）', e);
+    });
+  }
+
+  setPetSize(size) {
+    if (!Number.isInteger(size)) return;
+    fetch(BASE + '/pet-size', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: this.pet.id, size }),
+    }).catch((e) => {
+      console.warn('[dsh-whale-girl] 大小设置请求失败', e);
     });
   }
 

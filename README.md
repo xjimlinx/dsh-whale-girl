@@ -75,6 +75,17 @@ pnpm run bundle
 
 **重启 DSH**。`dsh.profile.bundles` 只在启动时读取，热重载不会捡起新插件。
 
+### Linux 桌面窗口
+
+在 Wayland 会话中可让 Electron 走 XWayland；某些 Linux 桌面环境不支持 Electron 的鼠标转发，需保持宠物窗口可交互才能拖动：
+
+```sh
+DSH_WHALE_ELECTRON_PATH="$PWD/scripts/linux-electron-x11.sh" \
+DSH_WHALE_FORCE_INTERACTIVE=1 dsh --profile web --no-open
+```
+
+`DSH_WHALE_ELECTRON_BIN` 可指定系统 Electron 可执行文件。可交互模式下，桌宠透明窗口的留白区域也会接收鼠标输入。右键宠物可选「大小」预设；在「设置 → 鲸鱼娘」可输入精确宽度。
+
 ### 使用
 
 1. 启动 DSH 后，右下角出现鲸鱼娘；拖动可换位置，单击/双击触发互动，右键打开菜单。
@@ -237,6 +248,17 @@ Link it into your DSH profile (or run `dsh plugin --profile desktop add <absolut
 ```
 
 **Restart DSH.** `dsh.profile.bundles` is read at startup only; hot reload will not pick up a new plugin.
+
+### Linux desktop window
+
+On Wayland, the helper can run through XWayland. Some Linux environments do not forward mouse movement through an ignored Electron window, so enable the interactive mode to allow dragging:
+
+```sh
+DSH_WHALE_ELECTRON_PATH="$PWD/scripts/linux-electron-x11.sh" \
+DSH_WHALE_FORCE_INTERACTIVE=1 dsh --profile web --no-open
+```
+
+Set `DSH_WHALE_ELECTRON_BIN` to choose the installed Electron binary. Interactive mode also receives clicks in the transparent window margins. Use the pet's right-click **Size** menu for presets, or enter an exact width in **Settings → Whale Girl**.
 
 ### Usage
 
