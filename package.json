@@ -64,6 +64,7 @@
     "assets/config.jsonc",
     "assets/logo.png",
     "scripts/ensure-electron.mjs",
+    "scripts/linux-electron-x11.sh",
     "cordis.patch.yml"
   ],
   "scripts": {
