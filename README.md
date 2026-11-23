@@ -81,10 +81,11 @@ pnpm run bundle
 
 ```sh
 DSH_WHALE_ELECTRON_PATH="$PWD/scripts/linux-electron-x11.sh" \
-DSH_WHALE_FORCE_INTERACTIVE=1 dsh --profile web --no-open
+DSH_WHALE_FORCE_INTERACTIVE=1 \
+DSH_WHALE_LINUX_WINDOW_TYPE=notification dsh --profile web --no-open
 ```
 
-`DSH_WHALE_ELECTRON_BIN` 可指定系统 Electron 可执行文件。可交互模式下，桌宠透明窗口的留白区域也会接收鼠标输入。右键宠物可选「大小」预设；在「设置 → 鲸鱼娘」可输入精确宽度。
+`DSH_WHALE_ELECTRON_BIN` 可指定系统 Electron 可执行文件。`notification` 窗口类型允许桌宠移到被面板占用的屏幕上沿；不需要时可省去该变量。可交互模式下，桌宠透明窗口的留白区域也会接收鼠标输入。右键宠物可选「大小」预设；在「设置 → 鲸鱼娘」可输入精确宽度。
 
 ### 使用
 
@@ -255,10 +256,11 @@ On Wayland, the helper can run through XWayland. Some Linux environments do not 
 
 ```sh
 DSH_WHALE_ELECTRON_PATH="$PWD/scripts/linux-electron-x11.sh" \
-DSH_WHALE_FORCE_INTERACTIVE=1 dsh --profile web --no-open
+DSH_WHALE_FORCE_INTERACTIVE=1 \
+DSH_WHALE_LINUX_WINDOW_TYPE=notification dsh --profile web --no-open
 ```
 
-Set `DSH_WHALE_ELECTRON_BIN` to choose the installed Electron binary. Interactive mode also receives clicks in the transparent window margins. Use the pet's right-click **Size** menu for presets, or enter an exact width in **Settings → Whale Girl**.
+Set `DSH_WHALE_ELECTRON_BIN` to choose the installed Electron binary. The optional `notification` window type permits placement above a panel's reserved work area. Interactive mode also receives clicks in the transparent window margins. Use the pet's right-click **Size** menu for presets, or enter an exact width in **Settings → Whale Girl**.
 
 ### Usage
 

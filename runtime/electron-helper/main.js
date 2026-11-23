@@ -419,6 +419,9 @@ function createPetWindows() {
       enableLargerThanScreen: true,
       transparent: true,
       frame: false,
+      type: process.platform === 'linux' && process.env.DSH_WHALE_LINUX_WINDOW_TYPE === 'notification'
+        ? 'notification'
+        : undefined,
       alwaysOnTop: true,
       skipTaskbar: true,
       resizable: false,
